@@ -7,7 +7,7 @@ REPO="arialang/aria"
 FORMULA_FILE="${0%/*}/../../Formula/aria.rb"
 
 echo "Fetching release info for $REPO $VERSION ..."
-RELEASE_JSON=$(curl -sL "https://api.github.com/repos/$REPO/releases/tags/v$VERSION")
+RELEASE_JSON=$(curl -sL "https://api.github.com/repos/$REPO/releases/tags/$VERSION")
 
 # Find the .tgz asset
 TGZ_URL_MACOS=$(echo "$RELEASE_JSON" | jq -r '.assets[] | select(.name | test("aarch64-apple-darwin" + "-.*\\.tgz$")) | .browser_download_url')
