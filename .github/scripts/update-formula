@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+VERSION=${VERSION:?VERSION not set}
+
+REPO="arialang/aria"
+FORMULA_FILE="${0%/*}/../../Formula/aria.rb"
+
+echo "Fetching release info for $REPO $VERSION ..."
+RELEASE_JSON=$(curl -sL "https://api.github.com/repos/$REPO/releases/tags/v$VERSION")
+
+# Find the .tgz asset
+TGZ_URL_MACOS=$(echo "$RELEASE_JSON" | jq -r '.assets[] | select(.name | test("aarch64-apple-darwin" + "-.*\\.tgz$")) | .browser_download_url')
+TGZ_URL_LINUX=$(echo "$RELEASE_JSON" | jq -r '.assets[] | select(.name | test("x86_64-unknown-linux-gnu" + "-.*\\.tgz$")) | .browser_download_url')
+
+if [[ -z "$TGZ_URL_MACOS" || -z "$TGZ_URL_LINUX" ]]; then
+    echo "No matching .tgz assets found"
+    exit 1
+fi
+
+# Find the corresponding .sha256 asset
+SHA256_URL_MACOS=$(echo "$RELEASE_JSON" | jq -r '.assets[] | select(.name | test("aarch64-apple-darwin" + "-.*\\.tgz\\.sha256$")) | .browser_download_url')
+SHA256_URL_LINUX=$(echo "$RELEASE_JSON" | jq -r '.assets[] | select(.name | test("x86_64-unknown-linux-gnu" + "-.*\\.tgz\\.sha256$")) | .browser_download_url')
+
+if [[ -n "$SHA256_URL_MACOS" ]]; then
+    SHA_MACOS=$(curl -sL "$SHA256_URL_MACOS" | awk '{print $1}')
+else
+    SHA_MACOS=$(curl -sL "$TGZ_URL_MACOS" | shasum -a 256 | awk '{print $1}')
+fi
+
+if [[ -n "$SHA256_URL_LINUX" ]]; then
+    SHA_LINUX=$(curl -sL "$SHA256_URL_LINUX" | awk '{print $1}')
+else
+    SHA_LINUX=$(curl -sL "$TGZ_URL_LINUX" | shasum -a 256 | awk '{print $1}')
+fi
+
+
+echo "Writing formula $FORMULA_FILE ..."
+cat > "$FORMULA_FILE" <<EOF
+class Aria < Formula
+  desc "The Aria Programming Language"
+  homepage "https://egranata.github.io/aria/"
+  license "Apache-2.0"
+  version "$VERSION"
+
+  if OS.mac? && Hardware::CPU.arm?
+    url "$TGZ_URL_MACOS"
+    sha256 "$SHA_MACOS"
+  elsif OS.linux? && Hardware::CPU.intel?
+    url "$TGZ_URL_LINUX"
+    sha256 "$SHA_LINUX"
+  else
+    odie "Aria is not supported on your system (unsupported OS or CPU architecture)"
+  end
+
+  def install
+    bin.install Dir["bin/*"] if Dir.exist?("bin")
+    lib.install Dir["lib/*"] if Dir.exist?("lib")
+    (share/"aria").install Dir["share/*"] if Dir.exist?("share")
+  end
+
+  test do
+    system "#{bin}/aria", "--version"
+  end
+end
+EOF
+
+echo "Formula updated successfully!"

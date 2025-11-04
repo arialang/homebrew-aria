@@ -1,9 +1,9 @@
-# gh workflow run release.yml -f version=v0.0.1 -R enricobolzonello/homebrew-aria
+# gh workflow run release.yml -f version=v0.0.1 -R arialang/homebrew-aria
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version'
+        description: "Version"
         required: true
         type: string
 
