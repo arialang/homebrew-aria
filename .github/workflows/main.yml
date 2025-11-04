@@ -22,4 +22,4 @@ jobs:
           git config --global user.email 'aria-bot@noreply.github.com'
           git add Formula/aria.rb
           git commit -m 'Updated aria to ${{ github.event.inputs.version }}'
-          git push origin master
+          git push origin HEAD
